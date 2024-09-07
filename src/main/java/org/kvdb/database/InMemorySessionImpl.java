@@ -61,7 +61,7 @@ public class InMemorySessionImpl implements Session {
 
     @Override
     public Transaction startTransaction() {
-        if (!inTransaction)
+        if (inTransaction)
             throw new RuntimeException("Transaction with id " + currentTransaction.getId() + " in progress");
         inTransaction = true;
         currentTransaction = new InMemoryTransaction(transactionId.getAndIncrement());
@@ -113,7 +113,8 @@ public class InMemorySessionImpl implements Session {
         for (Map.Entry<String, ModifiedValue> update : updates.entrySet() ) {
             String key = update.getKey();
             ModifiedValue mod = update.getValue();
-            if (!this.db.get(key).equals(mod.oldValue)) {
+            if ((this.db.get(key) == null && mod.oldValue != null) || (this.db.get(key) !=null &&
+                    !this.db.get(key).equals(mod.oldValue))) {
                 isValid = false;
                 break;
             }
