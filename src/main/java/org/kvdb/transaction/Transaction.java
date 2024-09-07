@@ -1,6 +1,9 @@
 package org.kvdb.transaction;
 
+import java.util.List;
+
 public interface Transaction {
-    void commit();
-    void rollback();
+    int getId();
+    List<Operation> getOperations();
+    void addOperation(Operation op);
 }
