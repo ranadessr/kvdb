@@ -3,7 +3,7 @@ package org.kvdb.database;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class InMemDatabase implements Database {
+public class InMemoryDatabase implements Database {
     private Map<String, String> store = new ConcurrentHashMap<>();
 
     @Override
