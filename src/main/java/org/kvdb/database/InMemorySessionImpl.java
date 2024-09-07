@@ -17,7 +17,7 @@ public class InMemorySessionImpl implements Session {
     private AtomicInteger transactionId = new AtomicInteger();
     private Transaction currentTransaction;
 
-    // structures for mantaining uncommitted puts/deletes
+    // structures for maintaining uncommitted puts/deletes
     private Map<String, ModifiedValue> modifiedKeys = new HashMap<>();
     private Map<String, ModifiedValue> deletedKeys = new HashMap<>();
 
@@ -29,6 +29,7 @@ public class InMemorySessionImpl implements Session {
         this.db = db;
         this.sessionId = sessionId;
     }
+
     public void put(String key, String value) {
         if (inTransaction) {
             String oldValue = this.db.get(key);
@@ -37,6 +38,7 @@ public class InMemorySessionImpl implements Session {
         } else
             this.db.put(key, value);
     }
+
     public String get(String key) {
         String value = this.db.get(key);
         if (inTransaction) {
@@ -47,6 +49,7 @@ public class InMemorySessionImpl implements Session {
         }
         return value;
     }
+
     public void delete(String key) {
         if (inTransaction) {
             String oldValue = this.db.get(key);
@@ -58,6 +61,8 @@ public class InMemorySessionImpl implements Session {
 
     @Override
     public Transaction startTransaction() {
+        if (!inTransaction)
+            throw new RuntimeException("Transaction with id " + currentTransaction.getId() + " in progress");
         inTransaction = true;
         currentTransaction = new InMemoryTransaction(transactionId.getAndIncrement());
         return currentTransaction;
@@ -65,6 +70,8 @@ public class InMemorySessionImpl implements Session {
 
     @Override
     public void commitTransaction() {
+        if (!inTransaction)
+            throw new RuntimeException("No active transaction to commit");
         // go thru modifiedKeys and deletedKeys
         // for all deleted/modified keys, check that old value matches value in db
         // if any of the values to be committed do not match, roll back the transaction
@@ -74,20 +81,31 @@ public class InMemorySessionImpl implements Session {
         } else {
             applyPuts(modifiedKeys);
             applyDeletes(deletedKeys.keySet());
+            cleanupTransaction(true);
         }
-        inTransaction = false;
-        currentTransaction = null;
     }
 
     @Override
     public void rollbackTransaction() {
-        inTransaction = false;
-        currentTransaction = null;
+        if (!inTransaction)
+            throw new RuntimeException("No active transaction to rollback");
+        cleanupTransaction(false);
     }
 
     @Override
     public void close() {
 
+    }
+
+    private void cleanupTransaction(boolean isCommitted) {
+        modifiedKeys.clear();
+        deletedKeys.clear();
+        if (isCommitted)
+            committedTransactions.add(currentTransaction);
+        else
+            rolledBackTransactions.add(currentTransaction);
+        inTransaction = false;
+        currentTransaction = null;
     }
 
     private boolean compareOldNewValues(Map<String, ModifiedValue> updates) {
