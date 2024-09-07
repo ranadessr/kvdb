@@ -83,6 +83,7 @@ public class InMemorySessionImpl implements Session {
             if (!compareOldNewValues(modifiedKeys) || !compareOldNewValues(deletedKeys)) {
                 rollbackTransaction();
             } else {
+                System.out.println("Committing transaction " + currentTransaction.getId());
                 applyPuts(modifiedKeys);
                 applyDeletes(deletedKeys.keySet());
                 cleanupTransaction(true);
@@ -97,6 +98,7 @@ public class InMemorySessionImpl implements Session {
     public void rollbackTransaction() {
         if (!inTransaction)
             throw new RuntimeException("No active transaction to rollback");
+        System.out.println("Rolling back transaction " + currentTransaction.getId());
         cleanupTransaction(false);
     }
 
