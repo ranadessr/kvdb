@@ -76,12 +76,20 @@ public class InMemorySessionImpl implements Session {
         // for all deleted/modified keys, check that old value matches value in db
         // if any of the values to be committed do not match, roll back the transaction
         // otherwise update all values
-        if (!compareOldNewValues(modifiedKeys) || !compareOldNewValues(deletedKeys)) {
-            rollbackTransaction();
-        } else {
-            applyPuts(modifiedKeys);
-            applyDeletes(deletedKeys.keySet());
-            cleanupTransaction(true);
+
+        // acquire lock to prevent other threads from committing
+        this.db.dbLock().lock();
+        try {
+            if (!compareOldNewValues(modifiedKeys) || !compareOldNewValues(deletedKeys)) {
+                rollbackTransaction();
+            } else {
+                applyPuts(modifiedKeys);
+                applyDeletes(deletedKeys.keySet());
+                cleanupTransaction(true);
+            }
+        }
+        finally {
+            this.db.dbLock().unlock();
         }
     }
 
