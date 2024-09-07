@@ -3,6 +3,7 @@
 kvdb implements a simple key/value store with transactional updates
 
 ## The following operations are supported
+
 - GET `<key>`
 - PUT `<key> <value>`
 - DELETE `<key>`
@@ -13,6 +14,28 @@ The above operations can be run inside or outside a transaction. If run outside 
 kvdb can be run as an embedded database or as a server process
 
 ### Running as embedded database
+
+In this mode the database is like a transactional `Map`. The following is an example usage
+
+```
+import org.kvdb.database.Session;
+import org.kvdb.database.SessionManager;
+
+// ...
+  SessionManager sessMgr = new SessionManager();
+  Session sess = sessMgr.createSession();
+
+  sess.startTransaction();
+  sess.put("foo", "bar");
+  sess.put("baz", "bat");
+  sess.delete("baz");
+  sess.commitTransaction();
+  System.out.println(sess.get("baz"));
+  System.out.println(sess.get("foo"));
+
+```
+A reference to the db is obtained via a `SessionManager` instance. Each `Session` is a connection to the db. For a full example refer to `App.java`
+
 
 ### Running as a server process
 
