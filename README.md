@@ -16,9 +16,9 @@ The above operations can be run inside or outside a transaction. If run outside 
 
 ```
 git clone https://github.com/ranadessr/kvdb/
-mvn clean package
-java -classpath target/kvdb-1.0-SNAPSHOT.jar org.kvdb.App # runs example usage App
+mvn clean compile assembly:single
 ```
+The above command will produce a jar with all needed dependencies in the `target` dir
 
 ## Running kvdb
 
@@ -50,3 +50,43 @@ A reference to the db is obtained via a `SessionManager` instance. Each `Session
 
 ### Running as a server process
 
+- start the server process as follows
+  ```java -classpath target/kvdb-1.0-SNAPSHOT-jar-with-dependencies.jar org.kvdb.App # runs example usage App```
+
+Once started the server is ready to receive commands based on the following protocol
+
+```
+Data Modification Commands
+Data Modification Commands can be issued individually or as a part of a transaction.
+
+
+# add or update a key/value pair – overwrites existing value
+
+PUT [key] [value]
+
+
+# retrieve a value by key – retrieves latest value from all committed transactions
+
+GET [key]
+
+
+# delete a value by key
+
+DEL [key]
+
+
+Transaction Control Commands
+# start a transaction
+
+START
+
+
+# commit a transaction
+
+COMMIT
+
+
+# rollback a transaction – discard changes
+
+ROLLBACK
+```
