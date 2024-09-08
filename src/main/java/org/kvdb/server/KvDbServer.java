@@ -1,5 +1,8 @@
 package org.kvdb.server;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.netty.bootstrap.ServerBootstrap;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
@@ -14,6 +17,7 @@ import io.netty.handler.codec.string.StringDecoder;
 import io.netty.handler.codec.string.StringEncoder;
 import org.kvdb.database.Session;
 import org.kvdb.database.SessionManager;
+import org.kvdb.server.command.Command;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -57,6 +61,7 @@ public class KvDbServer {
         private SessionManager sessionManager;
         private Map<Channel, Session> sessions = new ConcurrentHashMap<>();
         private CommandParser parser = CommandParser.getInstance();
+        private ObjectMapper mapper = new ObjectMapper();
 
         public DbServerHandler(SessionManager sessionManager) {
             this.sessionManager = sessionManager;
@@ -72,7 +77,9 @@ public class KvDbServer {
         @Override
         public void channelRead0(ChannelHandlerContext ctx, String msg) {
             System.out.print("received message on channel " + ctx.name() + ": " + msg);
-            ctx.channel().writeAndFlush("ECHO " + msg + "\n");
+            Session sess = sessions.get(ctx.channel());
+            String response = handleCommand(sess, msg);
+            ctx.channel().writeAndFlush(response + "\n");
         }
 
         @Override
@@ -87,11 +94,31 @@ public class KvDbServer {
             cause.printStackTrace();
             ctx.close();
         }
-        private void handleCommand(String cmd) {
-            try {
+        private String handleCommand(Session sess, String cmd) {
+            StringBuffer response = new StringBuffer();
+            CommandStatus status = new CommandStatus();
 
+            try {
+                Command command = parser.parse(cmd);
+                String resp = command.run(sess);
+                status.status = "Ok";
+                status.result = resp;
             } catch (Exception e) {
+                status.status = "Error";
+                status.mesg = e.getMessage();
+            }
+            try {
+                return mapper.writeValueAsString(status);
+            } catch (JsonProcessingException jpe) {
+                return jpe.getMessage();
             }
         }
+    }
+    private static class CommandStatus {
+        public String status;
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public String result;
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public String mesg;
     }
 }
