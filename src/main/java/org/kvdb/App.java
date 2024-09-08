@@ -2,6 +2,7 @@ package org.kvdb;
 
 import org.kvdb.database.Session;
 import org.kvdb.database.SessionManager;
+import org.kvdb.server.KvDbServer;
 
 /**
  * Example program that uses kvdb
@@ -12,7 +13,7 @@ public class App
     public static void main( String[] args ) {
         // obtain an instance of the db
         SessionManager sessMgr = new SessionManager();
-        Session sess = sessMgr.createSession();
+/*        Session sess = sessMgr.createSession();
         Session ses2 = sessMgr.createSession();
 
         // opertations can be performed outside a transaction and are immediately
@@ -32,6 +33,12 @@ public class App
         sess.put("k1", "v1");
         ses2.put("k1", "v2");
         sess.commitTransaction();
-        System.out.println(sess.get("k1"));
+        System.out.println(sess.get("k1"));*/
+        KvDbServer server = new KvDbServer(sessMgr, 8080);
+        try {
+            server.run();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

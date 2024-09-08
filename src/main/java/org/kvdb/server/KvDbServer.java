@@ -1,25 +1,27 @@
 package org.kvdb.server;
 
 import io.netty.bootstrap.ServerBootstrap;
-import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
 import io.netty.channel.ChannelFuture;
 import io.netty.channel.ChannelHandlerContext;
-import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
 import io.netty.channel.ChannelOption;
 import io.netty.channel.EventLoopGroup;
+import io.netty.channel.SimpleChannelInboundHandler;
 import io.netty.channel.nio.NioEventLoopGroup;
-import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
-import io.netty.handler.codec.ReplayingDecoder;
+import io.netty.handler.codec.string.StringDecoder;
+import io.netty.handler.codec.string.StringEncoder;
+import org.kvdb.database.Session;
 import org.kvdb.database.SessionManager;
 
-import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class KvDbServer {
     private final int port;
     private SessionManager sessionManager;
+
     public KvDbServer(SessionManager sessionManager, int port) {
         this.sessionManager = sessionManager;
         this.port = port;
@@ -35,7 +37,9 @@ public class KvDbServer {
 
                         @Override
                         public void initChannel(Channel ch) throws Exception {
-                            ch.pipeline().addLast(new DbServerHandler());
+                            ch.pipeline().addLast(new StringDecoder());
+                            ch.pipeline().addLast(new StringEncoder());
+                            ch.pipeline().addLast(new DbServerHandler(sessionManager));
                         }
                     })
                     .option(ChannelOption.SO_BACKLOG, 128)
@@ -49,10 +53,33 @@ public class KvDbServer {
         }
     }
 
-    private static class DbServerHandler extends ChannelInboundHandlerAdapter {
+    private static class DbServerHandler extends SimpleChannelInboundHandler<String> {
+        private SessionManager sessionManager;
+        private Map<Channel, Session> sessions = new ConcurrentHashMap<>();
+        private CommandParser parser = CommandParser.getInstance();
+
+        public DbServerHandler(SessionManager sessionManager) {
+            this.sessionManager = sessionManager;
+        }
+
         @Override
-        public void channelRead(ChannelHandlerContext ctx, Object msg) {
-            ((ByteBuf) msg).release();
+        public void channelActive(ChannelHandlerContext ctx) throws Exception {
+            super.channelActive(ctx);
+            System.out.println("New client connected " + ctx.name());
+            sessions.put(ctx.channel(), sessionManager.createSession());
+        }
+
+        @Override
+        public void channelRead0(ChannelHandlerContext ctx, String msg) {
+            System.out.print("received message on channel " + ctx.name() + ": " + msg);
+            ctx.channel().writeAndFlush("ECHO " + msg + "\n");
+        }
+
+        @Override
+        public void channelUnregistered(ChannelHandlerContext ctx) throws Exception {
+            super.channelUnregistered(ctx);
+            System.out.println("Client disconnected");
+            sessions.remove(ctx.channel());
         }
 
         @Override
@@ -60,21 +87,11 @@ public class KvDbServer {
             cause.printStackTrace();
             ctx.close();
         }
-    }
-    public class CommandDecoder extends ReplayingDecoder<Void> {
-        @Override
-        protected void decode(
-                ChannelHandlerContext ctx, ByteBuf in, List<Object> out) {
+        private void handleCommand(String cmd) {
+            try {
 
-        }
-    }
-    private static class ServerCommand {
-        private final String command;
-        public ServerCommand(String command) {
-            this.command = command;
-        }
-        public String command() {
-            return this.command;
+            } catch (Exception e) {
+            }
         }
     }
 }
