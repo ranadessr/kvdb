@@ -52,7 +52,7 @@ A reference to the db is obtained via a `SessionManager` instance. Each `Session
 
 - start the server process as follows
 
-  ```java -Dport=8085 -classpath target/kvdb-1.0-SNAPSHOT-jar-with-dependencies.jar org.kvdb.App # runs example usage App```
+  ``` java -Dport=8085 -classpath target/kvdb-1.0-SNAPSHOT-jar-with-dependencies.jar org.kvdb.App ```
 - the port is optional. If not specified, the server starts on port 8080
 
 Once started the server is ready to receive commands based on the following protocol
