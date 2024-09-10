@@ -30,13 +30,15 @@ public class CommandParser {
     }
     public Command parse(String msg) throws IllegalAccessException {
         String[] pieces = msg.trim().split(" ");
-        if (pieces.length < 1 || pieces.length > 3)
+        if (pieces.length < 1)
             throw new IllegalArgumentException("Invalid command format " + msg);
         if (!commands.contains(pieces[0].toUpperCase()))
             throw new IllegalArgumentException("Unknown command : " + pieces[0]);
         if (pieces[0].equalsIgnoreCase("PUT")) {
-            if (pieces.length != 3) throw new IllegalArgumentException("Bad PUT request " + msg);
-            return new Put(pieces[1], pieces[2]);
+            if (pieces.length < 3) throw new IllegalArgumentException("Bad PUT request " + msg);
+            int firstIndex = msg.trim().indexOf(" ");
+            int secondIndex = msg.trim().indexOf(" ", firstIndex+1);
+            return new Put(pieces[1], msg.trim().substring(secondIndex+1));
         }
         if (pieces[0].equalsIgnoreCase("GET")) {
             if (pieces.length != 2) throw new IllegalArgumentException("Bad GET request " + msg);
