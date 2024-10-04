@@ -5,6 +5,7 @@ import org.kvdb.transaction.Transaction;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -80,8 +81,11 @@ public class InMemorySessionImpl implements Session {
         // acquire lock to prevent other threads from committing
         this.db.dbLock().lock();
         try {
-            if (!compareOldNewValues(modifiedKeys) || !compareOldNewValues(deletedKeys)) {
+            Set<ModifiedValue> failedModifiedKeys = compareOldNewValues(modifiedKeys);
+            Set<ModifiedValue> failedDeletedKeys = compareOldNewValues(deletedKeys);
+            if (!failedModifiedKeys.isEmpty() || !failedDeletedKeys.isEmpty()) {
                 rollbackTransaction();
+                throw new RuntimeException(getFailedKeys(failedModifiedKeys));
             } else {
                 System.out.println("Committing transaction " + currentTransaction.getId());
                 applyPuts(modifiedKeys);
@@ -107,6 +111,20 @@ public class InMemorySessionImpl implements Session {
 
     }
 
+    private String getFailedKeys(Set<ModifiedValue> modifiedKeys) {
+        StringBuffer failedKeys = new StringBuffer();
+
+        for (ModifiedValue val : modifiedKeys) {
+            if (val.oldValue.equalsIgnoreCase(val.newValue)) {
+                failedKeys.append("DELETE failed ").append(val.oldValue).append("\n");
+            }else {
+                failedKeys.append("MODIFY failed ").append(val.oldValue).append(" differs ").append(val.newValue).append("\n");
+            }
+        }
+
+        return failedKeys.toString();
+    }
+
     private void cleanupTransaction(boolean isCommitted) {
         modifiedKeys.clear();
         deletedKeys.clear();
@@ -118,18 +136,18 @@ public class InMemorySessionImpl implements Session {
         currentTransaction = null;
     }
 
-    private boolean compareOldNewValues(Map<String, ModifiedValue> updates) {
-        boolean isValid = true;
+    private Set<ModifiedValue> compareOldNewValues(Map<String, ModifiedValue> updates) {
+        Set<ModifiedValue> failedKeys = new HashSet<>();
         for (Map.Entry<String, ModifiedValue> update : updates.entrySet() ) {
             String key = update.getKey();
             ModifiedValue mod = update.getValue();
             if ((this.db.get(key) == null && mod.oldValue != null) || (this.db.get(key) !=null &&
                     !this.db.get(key).equals(mod.oldValue))) {
-                isValid = false;
+                failedKeys.add(update.getValue());
                 break;
             }
         }
-        return isValid;
+        return failedKeys;
     }
 
     private void applyPuts(Map<String, ModifiedValue> updates) {
@@ -150,6 +168,7 @@ public class InMemorySessionImpl implements Session {
     private static class ModifiedValue {
         String oldValue;
         String newValue;
+
         public ModifiedValue(String oldValue, String newValue) {
             this.oldValue = oldValue;
             this.newValue = newValue;
